@@ -13,3 +13,6 @@ tsconfig.tsbuildinfo
 
 # Playwright MCP debug artifacts
 .playwright-mcp/
+
+# macOS
+.DS_Store
