@@ -60,6 +60,7 @@ type FilterArgs = {
   includeSent: boolean;
   search: string;
   county: string;
+  zipCode: string;
   yearFrom: number | null;
   yearTo: number | null;
 };
@@ -337,6 +338,8 @@ export const DatasetBrowser = () => {
   const [searchInput, setSearchInput] = useState("");
   const search = useDebounced(searchInput, 300);
   const [county, setCounty] = useState<string>("all");
+  const [zipInput, setZipInput] = useState("");
+  const zipCode = useDebounced(zipInput, 300);
   const [yearFrom, setYearFrom] = useState<string>("");
   const [yearTo, setYearTo] = useState<string>("");
   const [yearSort, setYearSort] = useState<"asc" | "desc" | null>("desc");
@@ -351,13 +354,14 @@ export const DatasetBrowser = () => {
     includeSent,
     search,
     county,
+    zipCode,
     yearFrom: yearFrom ? Number(yearFrom) : null,
     yearTo: yearTo ? Number(yearTo) : null,
   };
 
   useEffect(() => {
     setPage(0);
-  }, [includeSent, search, county, yearFrom, yearTo, pageSize, yearSort]);
+  }, [includeSent, search, county, zipCode, yearFrom, yearTo, pageSize, yearSort]);
 
   const listArgs: ListArgs = { ...filterArgs, sortDir: yearSort, page, pageSize };
 
@@ -454,7 +458,7 @@ export const DatasetBrowser = () => {
             Narrow the list before selecting records.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label htmlFor="filter">Search</Label>
             <div className="relative">
@@ -484,6 +488,17 @@ export const DatasetBrowser = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="zip">ZIP code</Label>
+            <Input
+              id="zip"
+              inputMode="numeric"
+              placeholder="e.g. 92708"
+              value={zipInput}
+              onChange={(e) => setZipInput(e.target.value)}
+            />
           </div>
 
           <div className="space-y-1.5">

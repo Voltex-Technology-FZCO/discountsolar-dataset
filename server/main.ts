@@ -195,6 +195,7 @@ const FilterSchema = z.object({
   includeSent: z.boolean().default(false),
   search: z.string().default(""),
   county: z.string().default("all"),
+  zipCode: z.string().default(""),
   yearFrom: z.number().int().nullable().default(null),
   yearTo: z.number().int().nullable().default(null),
 });
@@ -210,6 +211,8 @@ const buildSelector = (args: Filter): Record<string, unknown> => {
   const selector: Record<string, unknown> = {};
   selector.sent = args.includeSent ? true : { $ne: true };
   if (args.county && args.county !== "all") selector.county = args.county;
+  const zip = args.zipCode.trim();
+  if (zip) selector.zipCode = new RegExp("^" + escapeRegex(zip));
   if (args.yearFrom !== null || args.yearTo !== null) {
     const range: Record<string, Date> = {};
     if (args.yearFrom !== null) range.$gte = new Date(args.yearFrom, 0, 1);
