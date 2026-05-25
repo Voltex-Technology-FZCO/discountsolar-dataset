@@ -1,0 +1,11 @@
+{
+  "private": {
+
+    "ghl": {
+      "apiToken": "REPLACE_ME_PRIVATE_INTEGRATION_TOKEN",
+      "locationId": "REPLACE_ME_LOCATION_ID",
+      "recordIdFieldId": "REPLACE_ME_CUSTOM_FIELD_ID_FOR_RECORD_ID",
+      "source": "Dataset Browser"
+    }
+  }
+}

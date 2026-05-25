@@ -1,0 +1,36 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${SERVICE_USER_MONGO}
+      MONGO_INITDB_ROOT_PASSWORD: ${SERVICE_PASSWORD_MONGO}
+      MONGO_INITDB_DATABASE: meteor
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      SERVICE_FQDN_APP_3000: /
+      ROOT_URL: ${SERVICE_FQDN_APP}
+      PORT: 3000
+      MONGO_URL: mongodb://${SERVICE_USER_MONGO}:${SERVICE_PASSWORD_MONGO}@mongo:27017/meteor?authSource=admin
+      METEOR_SETTINGS: ${METEOR_SETTINGS:-}
+
+volumes:
+  mongo-data:
+  mongo-config:

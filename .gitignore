@@ -1,0 +1,15 @@
+node_modules/
+
+# Meteor Modern-Tools build context directories
+_build
+*/build-assets
+*/build-chunks
+.rsdoctor
+
+# Local Meteor settings (contains secrets)
+settings.json
+.meteor/local
+tsconfig.tsbuildinfo
+
+# Playwright MCP debug artifacts
+.playwright-mcp/
