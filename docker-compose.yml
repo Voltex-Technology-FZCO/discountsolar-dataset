@@ -26,7 +26,7 @@ services:
         condition: service_healthy
     environment:
       SERVICE_FQDN_APP_3000: /
-      ROOT_URL: ${SERVICE_FQDN_APP}
+      ROOT_URL: ${SERVICE_URL_APP}
       PORT: 3000
       MONGO_URL: mongodb://${SERVICE_USER_MONGO}:${SERVICE_PASSWORD_MONGO}@mongo:27017/meteor?authSource=admin
       METEOR_SETTINGS: ${METEOR_SETTINGS:-}
