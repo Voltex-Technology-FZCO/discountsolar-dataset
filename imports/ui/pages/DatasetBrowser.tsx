@@ -56,6 +56,99 @@ import {
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500, 1000] as const;
 const TABLE_COL_COUNT = 9;
 
+type ColId =
+  | "select"
+  | "owner"
+  | "year"
+  | "address"
+  | "county"
+  | "homeValue"
+  | "phones"
+  | "emails"
+  | "project";
+
+const COLUMNS: { id: ColId; w: number; min: number; resizable: boolean }[] = [
+  { id: "select", w: 40, min: 40, resizable: false },
+  { id: "owner", w: 180, min: 100, resizable: true },
+  { id: "year", w: 90, min: 70, resizable: true },
+  { id: "address", w: 280, min: 150, resizable: true },
+  { id: "county", w: 140, min: 80, resizable: true },
+  { id: "homeValue", w: 130, min: 90, resizable: true },
+  { id: "phones", w: 240, min: 120, resizable: true },
+  { id: "emails", w: 220, min: 100, resizable: true },
+  { id: "project", w: 420, min: 200, resizable: true },
+];
+
+const COL_WIDTHS_KEY = "datasetBrowser.colWidths.v1";
+
+type ColWidths = Record<ColId, number>;
+
+const defaultWidths = (): ColWidths =>
+  Object.fromEntries(COLUMNS.map((c) => [c.id, c.w])) as ColWidths;
+
+const useColumnWidths = () => {
+  const [widths, setWidths] = useState<ColWidths>(() => {
+    const base = defaultWidths();
+    if (typeof window === "undefined") return base;
+    try {
+      const stored = JSON.parse(
+        window.localStorage.getItem(COL_WIDTHS_KEY) ?? "{}",
+      ) as Partial<ColWidths>;
+      return { ...base, ...stored };
+    } catch {
+      return base;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(widths));
+  }, [widths]);
+  return [widths, setWidths] as const;
+};
+
+const Resizer = ({
+  colId,
+  widths,
+  setWidths,
+}: {
+  colId: ColId;
+  widths: ColWidths;
+  setWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
+}) => {
+  const col = COLUMNS.find((c) => c.id === colId)!;
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startW = widths[colId];
+    const onMove = (m: MouseEvent) => {
+      const next = Math.max(col.min, startW + (m.clientX - startX));
+      setWidths((prev) => ({ ...prev, [colId]: next }));
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+  return (
+    <span
+      role="separator"
+      aria-orientation="vertical"
+      onMouseDown={onMouseDown}
+      onClick={(e) => e.stopPropagation()}
+      className="group absolute right-0 top-0 z-10 flex h-full w-2 cursor-col-resize select-none items-center justify-center"
+    >
+      <span className="h-5 w-px bg-[var(--color-border)] transition-all group-hover:h-full group-hover:w-0.5 group-hover:bg-[var(--color-primary)] group-active:bg-[var(--color-primary)]" />
+    </span>
+  );
+};
+
 type FilterArgs = {
   includeSent: boolean;
   search: string;
@@ -98,18 +191,30 @@ const useDebounced = <T,>(value: T, delay = 300): T => {
   return debounced;
 };
 
+const ColGroup = ({ widths }: { widths: ColWidths }) => (
+  <colgroup>
+    {COLUMNS.map((c) => (
+      <col key={c.id} style={{ width: `${widths[c.id]}px` }} />
+    ))}
+  </colgroup>
+);
+
 const RecordsTable = ({
   args,
   selected,
   setSelected,
   yearSort,
   onCycleYearSort,
+  widths,
+  setWidths,
 }: {
   args: ListArgs;
   selected: Set<string>;
   setSelected: React.Dispatch<React.SetStateAction<Set<string>>>;
   yearSort: "asc" | "desc" | null;
   onCycleYearSort: () => void;
+  widths: ColWidths;
+  setWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
 }) => {
   const { data } = api.datasetRecords.list.usePublication(args);
   const records = (data ?? []) as DatasetRecord[];
@@ -136,18 +241,22 @@ const RecordsTable = ({
   };
 
   return (
-    <Table>
+    <Table className="table-fixed">
+      <ColGroup widths={widths} />
       <TableHeader>
         <TableRow>
-          <TableHead className="w-10">
+          <TableHead className="relative">
             <Checkbox
               checked={allPageSelected}
               onCheckedChange={togglePageAll}
               aria-label="Select all on this page"
             />
           </TableHead>
-          <TableHead>Owner</TableHead>
-          <TableHead>
+          <TableHead className="relative">
+            Owner
+            <Resizer colId="owner" widths={widths} setWidths={setWidths} />
+          </TableHead>
+          <TableHead className="relative">
             <button
               type="button"
               onClick={onCycleYearSort}
@@ -163,13 +272,32 @@ const RecordsTable = ({
                 <ArrowUpDown className="h-3 w-3 opacity-50" />
               )}
             </button>
+            <Resizer colId="year" widths={widths} setWidths={setWidths} />
           </TableHead>
-          <TableHead>Address</TableHead>
-          <TableHead>County</TableHead>
-          <TableHead className="text-right">Home value</TableHead>
-          <TableHead>Phones</TableHead>
-          <TableHead>Emails</TableHead>
-          <TableHead className="w-[36rem] min-w-[24rem]">Project</TableHead>
+          <TableHead className="relative">
+            Address
+            <Resizer colId="address" widths={widths} setWidths={setWidths} />
+          </TableHead>
+          <TableHead className="relative">
+            County
+            <Resizer colId="county" widths={widths} setWidths={setWidths} />
+          </TableHead>
+          <TableHead className="relative text-right">
+            Home value
+            <Resizer colId="homeValue" widths={widths} setWidths={setWidths} />
+          </TableHead>
+          <TableHead className="relative">
+            Phones
+            <Resizer colId="phones" widths={widths} setWidths={setWidths} />
+          </TableHead>
+          <TableHead className="relative">
+            Emails
+            <Resizer colId="emails" widths={widths} setWidths={setWidths} />
+          </TableHead>
+          <TableHead className="relative">
+            Project
+            <Resizer colId="project" widths={widths} setWidths={setWidths} />
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -201,7 +329,7 @@ const RecordsTable = ({
                     aria-label={`Select ${r.firstName} ${r.lastName}`}
                   />
                 </TableCell>
-                <TableCell className="font-medium whitespace-nowrap">
+                <TableCell className="font-medium truncate">
                   {r.firstName} {r.lastName}
                 </TableCell>
                 <TableCell className="tabular-nums text-[var(--color-muted-foreground)]">
@@ -209,7 +337,7 @@ const RecordsTable = ({
                     ? new Date(r.permitAppliedDate).getFullYear()
                     : "—"}
                 </TableCell>
-                <TableCell className="text-sm whitespace-nowrap">
+                <TableCell className="text-sm truncate">
                   {r.streetAddress},{" "}
                   <span className="text-[var(--color-muted-foreground)]">
                     {r.city}, {r.zipCode}
@@ -221,7 +349,7 @@ const RecordsTable = ({
                 <TableCell className="text-right tabular-nums">
                   {formatMoney(r.homeValue)}
                 </TableCell>
-                <TableCell className="text-sm max-w-0">
+                <TableCell className="text-sm overflow-hidden">
                   <div className="flex items-center gap-2">
                     {phones.length === 0 ? (
                       <span className="text-[var(--color-muted-foreground)]">
@@ -268,7 +396,7 @@ const RecordsTable = ({
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-sm max-w-0">
+                <TableCell className="text-sm overflow-hidden">
                   {emails.length === 0 ? (
                     <span className="text-[var(--color-muted-foreground)]">
                       —
@@ -290,7 +418,7 @@ const RecordsTable = ({
                     </Tooltip>
                   )}
                 </TableCell>
-                <TableCell className="text-sm text-[var(--color-muted-foreground)] max-w-0">
+                <TableCell className="text-sm text-[var(--color-muted-foreground)] overflow-hidden">
                   {r.projectDescription ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -313,8 +441,9 @@ const RecordsTable = ({
   );
 };
 
-const TableSkeleton = () => (
-  <Table>
+const TableSkeleton = ({ widths }: { widths: ColWidths }) => (
+  <Table className="table-fixed">
+    <ColGroup widths={widths} />
     <TableHeader>
       <TableRow>
         <TableHead colSpan={TABLE_COL_COUNT} className="h-10" />
@@ -348,6 +477,7 @@ export const DatasetBrowser = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   const [lastResult, setLastResult] = useState<SendSummary | null>(null);
+  const [widths, setWidths] = useColumnWidths();
   const queryClient = useQueryClient();
 
   const filterArgs: FilterArgs = {
@@ -594,13 +724,15 @@ export const DatasetBrowser = () => {
       </div>
 
       <Card>
-        <Suspense fallback={<TableSkeleton />}>
+        <Suspense fallback={<TableSkeleton widths={widths} />}>
           <RecordsTable
             args={listArgs}
             selected={selected}
             setSelected={setSelected}
             yearSort={yearSort}
             onCycleYearSort={cycleYearSort}
+            widths={widths}
+            setWidths={setWidths}
           />
         </Suspense>
       </Card>
