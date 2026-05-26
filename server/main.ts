@@ -231,6 +231,27 @@ const buildSelector = (args: Filter): Record<string, unknown> => {
       { projectDescription: re },
       { emails: re },
     ];
+    if (/\s/.test(search)) {
+      const escaped = escapeRegex(search);
+      or.push({
+        $expr: {
+          $regexMatch: {
+            input: { $concat: ["$firstName", " ", "$lastName"] },
+            regex: escaped,
+            options: "i",
+          },
+        },
+      });
+      or.push({
+        $expr: {
+          $regexMatch: {
+            input: { $concat: ["$lastName", " ", "$firstName"] },
+            regex: escaped,
+            options: "i",
+          },
+        },
+      });
+    }
     const digits = search.replace(/\D/g, "");
     if (digits.length > 0) or.push({ "phones.number": new RegExp(digits) });
     selector.$or = or;
